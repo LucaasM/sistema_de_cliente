@@ -1,6 +1,7 @@
 package io.github.lucaasm.clientes.controller;
 
 import io.github.lucaasm.clientes.domain.entity.Cliente;
+import io.github.lucaasm.clientes.domain.service.ClienteService;
 import io.github.lucaasm.clientes.domain.service.ClienteServiceImpl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -13,10 +14,10 @@ import java.util.List;
 @RequestMapping("/cliente")
 public class ClienteController {
 
-    private final ClienteServiceImpl clienteService;
+    private final ClienteService clienteService;
 
-    public ClienteController(ClienteServiceImpl clienteServiceImpl) {
-        this.clienteService = clienteServiceImpl;
+    public ClienteController(ClienteService clienteService) {
+        this.clienteService = clienteService;
     }
 
     @GetMapping
