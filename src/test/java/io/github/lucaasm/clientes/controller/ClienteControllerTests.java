@@ -1,7 +1,9 @@
 package io.github.lucaasm.clientes.controller;
 
 
+
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.lucaasm.clientes.controller.exception.NotFindByIdExcepetion;
 import io.github.lucaasm.clientes.domain.entity.Cliente;
 import io.github.lucaasm.clientes.domain.service.ClienteService;
 import org.hamcrest.Matchers;
@@ -22,7 +24,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
-
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 
@@ -34,23 +35,28 @@ public class ClienteControllerTests {
 
     static String CLIENTE_API = "/cliente";
 
+
     @MockBean
     ClienteService service;
 
     Cliente clienteRequest;
+    Cliente clienteResponse;
+
 
     @Autowired
     MockMvc mvc;
 
     @BeforeEach
     public void setUp(){
-        this.clienteRequest = Cliente.builder().id(1L).nome("Lucas Martins").cpf("70110791495").build();
+        this.clienteRequest = Cliente.builder().nome("Lucas Martins").cpf("70110791495").build();
+        this.clienteResponse = Cliente.builder().id(1l).nome("Lucas Martins").cpf("70110791495")
+                .dataCadastro(LocalDate.now()).build();
 
     }
 
     @Test
     @DisplayName("Deve lançar ao criar cliente no sistema")
-    public void createCliente() throws Exception{
+    public void criandoCliente() throws Exception{
 
         Cliente savedCliente = Cliente.builder().id(1L).nome("Lucas Martins").cpf("70110791495").dataCadastro(LocalDate.now()).build();
 
@@ -78,7 +84,7 @@ public class ClienteControllerTests {
 
     @Test
     @DisplayName("Deve lançar um erro ao tentar criar um cliente com dados vazios")
-    public void createClientInvalid() throws Exception {
+    public void criandoClienteSemDados() throws Exception {
         String json = new ObjectMapper().writeValueAsString(new Cliente());
 
         MockHttpServletRequestBuilder request = MockMvcRequestBuilders
@@ -95,7 +101,7 @@ public class ClienteControllerTests {
 
     @Test
     @DisplayName("Deve lançar ao tentar criar um cliente sem nome")
-    public void createClienteNotNomeInvalid() throws Exception{
+    public void criandoClienteSemNome() throws Exception{
 
         String json = new ObjectMapper().writeValueAsString(Cliente.builder().cpf("70110791495").build());
 
@@ -115,7 +121,7 @@ public class ClienteControllerTests {
 
     @Test
     @DisplayName("Deve lançar ao tentar criar um cliente com CPF inválido")
-    public void createClienteCpfInvalid() throws Exception{
+    public void criandoClienteComCpfInvalido() throws Exception{
 
         String json = new ObjectMapper()
                 .writeValueAsString(Cliente.builder().nome("Lucas Martins").cpf("70110391495").build());
@@ -136,7 +142,7 @@ public class ClienteControllerTests {
 
     @Test
     @DisplayName("Deve lançar ao tentar criar um cliente sem CPF")
-    public void createClienteNotCpfInvalid() throws Exception{
+    public void criandoClienteSemCpf() throws Exception{
 
         String json = new ObjectMapper()
                 .writeValueAsString(Cliente.builder().nome("Lucas Martins").build());
@@ -153,6 +159,157 @@ public class ClienteControllerTests {
                 .andExpect(MockMvcResultMatchers.jsonPath("errors", Matchers.hasSize(1)))
                 .andExpect(MockMvcResultMatchers.jsonPath("errors[0]")
                         .value("O campo CPF e obrigatorio."));
+    }
+
+    @Test
+    @DisplayName("Deve retornar as informações do cliente")
+    public void clienteExistente() throws Exception {
+        // Cenario (given)
+
+        Long id = 1l;
+
+        BDDMockito.given(service.listarPorid(id)).willReturn(clienteResponse);
+
+        MockHttpServletRequestBuilder requestBuilder = MockMvcRequestBuilders
+                .get(CLIENTE_API.concat("/" + id))
+                .accept(MediaType.APPLICATION_JSON);
+
+        mvc
+                .perform(requestBuilder)
+                .andExpect(MockMvcResultMatchers.status().isOk())
+                .andExpect(MockMvcResultMatchers.jsonPath("id").value(id))
+                .andExpect(MockMvcResultMatchers.jsonPath("nome").value(clienteResponse.getNome()))
+                .andExpect(MockMvcResultMatchers.jsonPath("cpf").value(clienteResponse.getCpf()))
+                .andExpect(MockMvcResultMatchers.jsonPath("dataCadastro")
+                        .value(clienteResponse.getDataCadastro().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))));
+
+        System.out.println(clienteResponse);
+
+    }
+
+    @Test
+    @DisplayName("Deve um erro ao tentar pesqusiar por um cliente inexistente")
+    public void clienteNãoExistente() throws Exception {
+        // Cenario (given)
+
+        Long id = 2l;
+
+        BDDMockito.given(service.listarPorid(id))
+                .willThrow(new NotFindByIdExcepetion(String.format("Não existe nenhum cliente com o código %d", id)));
+
+        MockHttpServletRequestBuilder requestBuilder = MockMvcRequestBuilders
+                .get(CLIENTE_API.concat("/" + id))
+                .accept(MediaType.APPLICATION_JSON);
+
+        mvc
+                .perform(requestBuilder)
+                .andExpect(MockMvcResultMatchers.status().isBadRequest())
+                .andExpect(MockMvcResultMatchers.jsonPath("errors", Matchers.hasSize(1)))
+                .andExpect(MockMvcResultMatchers.jsonPath("errors[0]").value(
+                        String.format("Não existe nenhum cliente com o código %d", id)
+                ));
+
+    }
+
+
+    @Test
+    @DisplayName("Deve lançar ao tentar atualizar um cliente inexistente")
+    public void clienteNãoExisteAoAtualizar() throws Exception {
+
+        Long id = 2l;
+
+        clienteRequest.setId(1L);
+        BDDMockito.given(service.atualizarCliente(id, clienteRequest))
+                .willThrow(new NotFindByIdExcepetion(String.format("Não existe nenhum cliente com o código %d", id)));
+
+        String json = new ObjectMapper().writeValueAsString(clienteRequest);
+
+
+        MockHttpServletRequestBuilder requestBuilder = MockMvcRequestBuilders
+                .put(CLIENTE_API.concat("/" + id))
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)
+                .content(json);
+
+
+        mvc
+                .perform(requestBuilder)
+                .andExpect(MockMvcResultMatchers.status().isBadRequest())
+                .andExpect(MockMvcResultMatchers.jsonPath("errors", Matchers.hasSize(1)))
+                .andExpect(MockMvcResultMatchers.jsonPath("errors[0]").value(
+                        String.format("Não existe nenhum cliente com o código %d", id)
+                ));
+    }
+
+    @Test
+    @DisplayName("Deve lançar ao atualizar um cliente existente")
+    public void atualizarClienteExistente() throws Exception {
+
+        Long id = 1l;
+
+        clienteRequest.setId(1L);
+        BDDMockito.given(service.atualizarCliente(id, clienteRequest))
+                .willReturn(clienteResponse);
+
+        String json = new ObjectMapper().writeValueAsString(clienteRequest);
+
+
+        MockHttpServletRequestBuilder requestBuilder = MockMvcRequestBuilders
+                .put(CLIENTE_API.concat("/" + id))
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)
+                .content(json);
+
+
+        mvc
+                .perform(requestBuilder)
+                .andExpect(MockMvcResultMatchers.status().isOk())
+                .andExpect(MockMvcResultMatchers.jsonPath("id").value(id))
+                .andExpect(MockMvcResultMatchers.jsonPath("nome").value(clienteResponse.getNome()))
+                .andExpect(MockMvcResultMatchers.jsonPath("cpf").value(clienteResponse.getCpf()))
+                .andExpect(MockMvcResultMatchers.jsonPath("dataCadastro")
+                        .value(clienteResponse.getDataCadastro().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))));
+    }
+
+    @Test
+    @DisplayName("Deve lançar ao tentar excluir um cliente que não existe")
+    public void deletarClienteInexistente() throws Exception {
+
+        Long id = 1l;
+
+        BDDMockito.given(service.removerCliente(id))
+                .willThrow(new NotFindByIdExcepetion(String.format("Não existe nenhum cliente com o codigo %d", id)));
+
+        MockHttpServletRequestBuilder requestBuilder = MockMvcRequestBuilders
+                .delete(CLIENTE_API.concat("/" + id))
+                .accept(MediaType.APPLICATION_JSON);
+
+        mvc
+                .perform(requestBuilder)
+                .andExpect(MockMvcResultMatchers.status().isBadRequest())
+                .andExpect(MockMvcResultMatchers.jsonPath("errors", Matchers.hasSize(1)))
+                .andExpect(MockMvcResultMatchers.jsonPath("errors[0]").value(
+                        String.format("Não existe nenhum cliente com o codigo %d", id)
+                ));
+
+    }
+
+    @Test
+    @DisplayName("Deve lançar ao deletar um cliente existente")
+    public void deletarClienteExistente() throws Exception {
+
+
+        BDDMockito.given(service.removerCliente(Mockito.anyLong()))
+                .willReturn("");
+
+        MockHttpServletRequestBuilder requestBuilder = MockMvcRequestBuilders
+                .delete(CLIENTE_API.concat("/" + 1l))
+                .accept(MediaType.APPLICATION_JSON);
+
+        mvc
+                .perform(requestBuilder)
+                .andExpect(MockMvcResultMatchers.status().isNoContent());
+
     }
 
 }

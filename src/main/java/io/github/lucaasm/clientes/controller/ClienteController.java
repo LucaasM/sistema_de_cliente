@@ -1,8 +1,9 @@
 package io.github.lucaasm.clientes.controller;
 
+import io.github.lucaasm.clientes.controller.exception.ClienteCpfExisteException;
+import io.github.lucaasm.clientes.controller.exception.NotFindByIdExcepetion;
 import io.github.lucaasm.clientes.domain.entity.Cliente;
 import io.github.lucaasm.clientes.domain.service.ClienteService;
-import io.github.lucaasm.clientes.domain.service.ClienteServiceImpl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -26,17 +27,12 @@ public class ClienteController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<?> listarPorId(@PathVariable Long id) {
-        try {
+    public ResponseEntity<?> listarPorId(@PathVariable Long id) throws NotFindByIdExcepetion {
             return ResponseEntity.ok().body(clienteService.listarPorid(id));
-        } catch(Exception e) {
-            System.out.println(e.getMessage());
-            return ResponseEntity.notFound().build();
-        }
     }
 
     @PostMapping
-    public ResponseEntity<Cliente> adicionarCliente(@Valid @RequestBody Cliente cliente) {
+    public ResponseEntity<Cliente> adicionarCliente(@Valid @RequestBody Cliente cliente) throws ClienteCpfExisteException {
         return new ResponseEntity<>(clienteService.adicionarCliente(cliente), HttpStatus.CREATED);
     }
 
@@ -45,24 +41,14 @@ public class ClienteController {
             @Valid
             @PathVariable Long id,
             @RequestBody Cliente clienteAtualizado
-    ) {
-        try {
+    ) throws NotFindByIdExcepetion {
             return ResponseEntity.ok().body(clienteService.atualizarCliente(id, clienteAtualizado));
-        } catch (Exception e) {
-            System.out.println(e.getMessage());
-            return ResponseEntity.notFound().build();
-        }
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> removerCliente(@PathVariable Long id) {
-        try {
+    public ResponseEntity<?> removerCliente(@PathVariable Long id) throws NotFindByIdExcepetion {
             clienteService.removerCliente(id);
             return ResponseEntity.noContent().build();
-        } catch (Exception e) {
-            System.out.println(e.getMessage());
-            return ResponseEntity.notFound().build();
-        }
     }
 
 }
