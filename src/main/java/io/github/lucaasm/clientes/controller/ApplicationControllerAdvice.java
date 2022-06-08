@@ -17,6 +17,7 @@ public class ApplicationControllerAdvice {
     @ExceptionHandler
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ApiErrors handleValidationErros(MethodArgumentNotValidException ex) {
+        // BindingResult é o resultado da validação
         BindingResult bindingResult = ex.getBindingResult();
 
         List<String> messages = bindingResult.getAllErrors().stream()
