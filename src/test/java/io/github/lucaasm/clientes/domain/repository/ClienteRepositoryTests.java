@@ -12,6 +12,8 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
+import java.util.Optional;
+
 @ExtendWith(SpringExtension.class)
 @ActiveProfiles("test")
 @DataJpaTest
@@ -24,15 +26,17 @@ public class ClienteRepositoryTests {
     TestEntityManager entityManager;
 
     Cliente newCliente;
+    Cliente clientePersitido;
 
     @BeforeEach
     public void setUp(){
         this.newCliente = Cliente.builder().nome("Lucas Martins").cpf("70110791495").build();
+        this.clientePersitido = Cliente.builder().id(1l).nome("Lucas Martins").cpf("70110791495").build();
     }
 
     @Test
     @DisplayName("Deve retornar um cliente ao tentar cadastrar cliente existente")
-    public void createClienteExistente(){
+    public void criandoClienteExistenteTest(){
 
         // Cenário
         entityManager.persist(newCliente);
@@ -46,7 +50,7 @@ public class ClienteRepositoryTests {
 
     @Test
     @DisplayName("Deve retornar um novo cliente ao cadastrar um cliente")
-    public void createClienteTest(){
+    public void criandoClienteTest(){
 
         // Cenario e Execucao
         Cliente clientePersistido = entityManager.persist(newCliente);
@@ -55,4 +59,42 @@ public class ClienteRepositoryTests {
         Assertions.assertThat(clientePersistido).isNotNull();
         Assertions.assertThat(clientePersistido.getId()).isNotNull();
     }
+
+    @Test
+    @DisplayName("Deve lançar ao buscar o cliente pelo ID")
+    public void buscarClientePeloIdTest(){
+
+        //
+        entityManager.persist(newCliente);
+
+        Optional<Cliente> cliente = repository.findById(1l);
+
+        Assertions.assertThat(cliente).isNotNull();
+        Assertions.assertThat(cliente.get().getId()).isEqualTo(1l);
+    }
+
+    @Test
+    @DisplayName("Deve lançar ao tentar consultar um cliente inexistente")
+    public void buscarClienteSemIdTest() throws Exception {
+
+        entityManager.persist(newCliente);
+        Optional<Cliente> cliente = repository.findById(2l);
+
+        Assertions.assertThat(cliente).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Deve lançar ao excluir um cliente existente")
+    public void deletarClienteExistente(){
+
+
+        Cliente clientePersistido = entityManager.persist(newCliente);
+
+        Optional<Cliente> clientePersistido2 = repository.findById(clientePersistido.getId());
+
+        repository.delete(clientePersistido2.get());
+
+
+    }
+
 }
