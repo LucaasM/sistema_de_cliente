@@ -65,12 +65,12 @@ public class ClienteRepositoryTests {
     public void buscarClientePeloIdTest(){
 
         //
-        entityManager.persist(newCliente);
+        Cliente clientePersitido = entityManager.persist(newCliente);
 
-        Optional<Cliente> cliente = repository.findById(1l);
+        Optional<Cliente> cliente = repository.findById(clientePersitido.getId());
 
         Assertions.assertThat(cliente).isNotNull();
-        Assertions.assertThat(cliente.get().getId()).isEqualTo(1l);
+        Assertions.assertThat(cliente.get().getId()).isEqualTo(clientePersitido.getId());
     }
 
     @Test
